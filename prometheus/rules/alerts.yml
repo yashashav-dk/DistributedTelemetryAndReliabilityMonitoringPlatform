@@ -1,0 +1,65 @@
+groups:
+  - name: edge_node_alerts
+    rules:
+      - alert: HighCPUUsage
+        expr: node_cpu_usage_percent > 90
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU on node {{ $labels.node_id }}"
+          description: "CPU usage is {{ $value }}% on node {{ $labels.node_id }}"
+
+      - alert: HighMemoryUsage
+        expr: node_memory_usage_percent > 85
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory on node {{ $labels.node_id }}"
+          description: "Memory usage is {{ $value }}% on node {{ $labels.node_id }}"
+
+      - alert: HighErrorRate
+        expr: node_error_rate > 0.05
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on node {{ $labels.node_id }}"
+          description: "Error rate is {{ $value }} on node {{ $labels.node_id }}"
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(node_request_latency_seconds_bucket[1m])) > 1
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "High p95 latency on node {{ $labels.node_id }}"
+          description: "p95 latency is {{ $value }}s on node {{ $labels.node_id }}"
+
+      - alert: NodeDown
+        expr: up == 0
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Node {{ $labels.instance }} is down"
+          description: "Prometheus cannot reach {{ $labels.instance }}"
+
+      - alert: LowReliabilityScore
+        expr: reliability_score < 0.95
+        for: 0s
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low reliability on node {{ $labels.node_id }}"
+          description: "Reliability score is {{ $value }} on node {{ $labels.node_id }}"
+
+      - alert: ErrorBudgetBurn
+        expr: error_budget_remaining < 0.5
+        for: 0s
+        labels:
+          severity: critical
+        annotations:
+          summary: "Error budget burning on node {{ $labels.node_id }}"
+          description: "Error budget remaining: {{ $value }} on node {{ $labels.node_id }}"

@@ -1,0 +1,29 @@
+global:
+  scrape_interval: 1s
+  evaluation_interval: 1s
+
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - alertmanager:9093
+
+scrape_configs:
+  - job_name: "edge-nodes"
+    static_configs:
+      - targets:
+          - edge-node-1:8000
+          - edge-node-2:8000
+          - edge-node-3:8000
+          - edge-node-4:8000
+          - edge-node-5:8000
+          - edge-node-6:8000
+          - edge-node-7:8000
+          - edge-node-8:8000
+          - edge-node-9:8000
+          - edge-node-10:8000
+          - edge-node-11:8000
+          - edge-node-12:8000

@@ -11,28 +11,89 @@
 
 ## Architecture
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Docker Network                           │
-│                                                                 │
-│  ┌──────────┐ ┌──────────┐       ┌──────────┐                  │
-│  │ Edge     │ │ Edge     │  ...  │ Edge     │  12 simulated    │
-│  │ Node 1   │ │ Node 2   │       │ Node 12  │  edge nodes      │
-│  │ :8001    │ │ :8002    │       │ :8012    │  (FastAPI)        │
-│  └────┬─────┘ └────┬─────┘       └────┬─────┘                  │
-│       │             │                  │                         │
-│       └─────────────┼──────────────────┘                        │
-│                     │  /metrics (every 1s)                      │
-│              ┌──────┴──────┐                                    │
-│              │  Prometheus │──────────┐                         │
-│              │  :9090      │          │                         │
-│              └──────┬──────┘   ┌──────┴──────┐                 │
-│                     │          │ Alertmanager │                 │
-│              ┌──────┴──────┐   │ :9093        │                 │
-│              │   Grafana   │   └──────────────┘                 │
-│              │   :3000     │                                    │
-│              └─────────────┘                                    │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TB
+    subgraph INJECT["&nbsp;&nbsp;Failure Injection CLI&nbsp;&nbsp;"]
+        direction LR
+        FI["inject_failure.py\n--node N --failure MODE"]
+    end
+
+    subgraph DOCKER["&nbsp;&nbsp;Docker Compose Network &nbsp;·&nbsp; 16 Services&nbsp;&nbsp;"]
+        direction TB
+
+        subgraph EDGE["&nbsp;&nbsp;Edge Node Fleet &nbsp;·&nbsp; FastAPI + prometheus_client&nbsp;&nbsp;"]
+            direction LR
+            N1["Node 1\n:8001"]
+            N2["Node 2\n:8002"]
+            N3["Node 3\n:8003"]
+            N4["Node 4\n:8004"]
+            N5["Node 5\n:8005"]
+            N6["Node 6\n:8006"]
+            N7["Node 7\n:8007"]
+            N8["Node 8\n:8008"]
+            N9["Node 9\n:8009"]
+            N10["Node 10\n:8010"]
+            N11["Node 11\n:8011"]
+            N12["Node 12\n:8012"]
+        end
+
+        subgraph OBSERVE["&nbsp;&nbsp;Observability Stack&nbsp;&nbsp;"]
+            direction LR
+            PROM["Prometheus\n:9090\n\nscrape: 1s\neval: 1s\n7 alert rules"]
+            AM["Alertmanager\n:9093\n\ngroup_wait: 0s\nroute by severity"]
+            GRAF["Grafana\n:3000\n\n4-row dashboard\nauto-provisioned"]
+        end
+    end
+
+    subgraph METRICS["&nbsp;&nbsp;Exposed Metrics per Node&nbsp;&nbsp;"]
+        direction LR
+        M1["cpu_usage\nmemory_usage"]
+        M2["request_latency\nrequests_total"]
+        M3["reliability_score\nerror_budget"]
+    end
+
+    FI -- "POST /inject\ncpu_spike · memory_leak\nlatency_spike · error_burst\nnode_crash" --> EDGE
+
+    N1 & N2 & N3 & N4 & N5 & N6 & N7 & N8 & N9 & N10 & N11 & N12 -- "/metrics" --> PROM
+
+    PROM -- "PromQL\nqueries" --> GRAF
+    PROM -- "alerts\n< 2s latency" --> AM
+
+    EDGE -.- METRICS
+
+    style DOCKER fill:#0d1117,stroke:#30363d,stroke-width:2px,color:#c9d1d9
+    style EDGE fill:#161b22,stroke:#00d2ff,stroke-width:1.5px,color:#c9d1d9
+    style OBSERVE fill:#161b22,stroke:#7b2ff7,stroke-width:1.5px,color:#c9d1d9
+    style INJECT fill:#1a1226,stroke:#f97583,stroke-width:1.5px,stroke-dasharray:5 5,color:#c9d1d9
+    style METRICS fill:#1a1226,stroke:#3fb950,stroke-width:1px,stroke-dasharray:3 3,color:#8b949e
+
+    style N1 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N2 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N3 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N4 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N5 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N6 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N7 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N8 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N9 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N10 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N11 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+    style N12 fill:#21262d,stroke:#00ff88,color:#c9d1d9
+
+    style PROM fill:#2a1a0a,stroke:#e6522c,stroke-width:2px,color:#f0883e
+    style AM fill:#2a1a0a,stroke:#e6522c,stroke-width:1.5px,color:#f0883e
+    style GRAF fill:#1a1a0a,stroke:#f46800,stroke-width:2px,color:#f0883e
+    style FI fill:#21262d,stroke:#f97583,stroke-width:1.5px,color:#f97583
+
+    style M1 fill:#0d1117,stroke:#3fb950,stroke-width:1px,color:#3fb950
+    style M2 fill:#0d1117,stroke:#3fb950,stroke-width:1px,color:#3fb950
+    style M3 fill:#0d1117,stroke:#3fb950,stroke-width:1px,color:#3fb950
+
+    linkStyle 0 stroke:#f97583,stroke-width:1.5px
+    linkStyle 1,2,3,4,5,6,7,8,9,10,11,12 stroke:#00d2ff,stroke-width:1px
+    linkStyle 13 stroke:#7b2ff7,stroke-width:2px
+    linkStyle 14 stroke:#e6522c,stroke-width:2px
+    linkStyle 15 stroke:#3fb950,stroke-width:1px,stroke-dasharray:3
 ```
 
 ## Quick Start
